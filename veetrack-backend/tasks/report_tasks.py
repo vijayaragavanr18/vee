@@ -1,6 +1,5 @@
 """Report generation Celery tasks — daily PDF generation and email delivery."""
 from __future__ import annotations
-import asyncio
 import json
 import logging
 from datetime import datetime

@@ -49,17 +49,17 @@ async def _generate_executive_brief_llm(client_name: str, keyword: str, articles
 
     context = "\n".join([f"- {a.get('title', '')}: {a.get('body_text', '')[:200]}" for a in articles[:10]])
     
-    prompt = f"""You are a senior media intelligence analyst for {client_name}.
+    prompt = f"""You are a Lead Intelligence Director at a top-tier media monitoring firm.
 Analyze these {len(articles)} recent news articles about "{keyword}".
 
 ARTICLES:
 {context}
 
-Write a concise intelligence brief in this EXACT format — 3 bullets only:
+Write a highly professional, board-ready executive brief in this EXACT format — 3 bullets only:
 
-WHAT HAPPENED: [one sentence — the key fact]
-WHY IT MATTERS: [one sentence — business impact for {client_name}]
-RECOMMENDED ACTION: [one sentence — what the PR/comms team should do now]
+WHAT HAPPENED: [one sentence — a highly professional synthesis of the key factual event]
+WHY IT MATTERS: [one sentence — the strategic business and market impact for the client]
+RECOMMENDED ACTION: [one sentence — a strategic, actionable PR/Comms directive]
 RISK LEVEL: [LOW / MEDIUM / HIGH / CRITICAL]
 
 No other text. No preamble. Just the 4 lines above."""
@@ -78,7 +78,7 @@ No other text. No preamble. Just the 4 lines above."""
     }
 
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
                 ollama_url,
                 json={
@@ -123,23 +123,24 @@ async def _generate_article_analysis_llm(article: dict) -> dict:
     if not content or len(content) < 50:
         content = article.get("summary", title)
         
-    prompt = f"""You are an expert intelligence analyst. Provide a deep, highly elaborate analysis of the following article to fill a full page report.
+    prompt = f"""You are a Senior Corporate Intelligence Analyst at an elite PR tracking firm. 
+Provide a master-level, highly elaborate analysis of the following article. Your analysis must be comprehensive enough to fill a full-page executive report.
 
 ARTICLE: {title}
-{content[:1500]}
+{content[:2000]}
 
-Write exactly three detailed sections. Make each section a comprehensive, very elaborate paragraph (at least 4-5 long sentences) so it fills the screen with rich insights.
+Write exactly three detailed sections. Make each section an extremely comprehensive, multi-sentence paragraph (at least 5-7 long sentences) packed with strategic insights, market context, and corporate intelligence. Use a highly professional, authoritative tone.
 
 Format your response exactly like this:
 
 WHAT HAPPENED:
-[Extremely elaborate paragraph detailing the core events, background context, and specific facts.]
+[Extremely elaborate paragraph detailing the core events, background context, key players, and specific facts mentioned in the article.]
 
 WHY IT MATTERS:
-[Extremely elaborate paragraph explaining the strategic business impact, market consequences, and deep implications.]
+[Extremely elaborate paragraph explaining the strategic business impact, market consequences, brand reputation implications, and deep industry consequences.]
 
 AI NARRATIVE:
-[A rich, storytelling-style cognitive POV narrative that connects this event to broader industry trends and gives a comprehensive, immersive summary.]
+[A rich, storytelling-style cognitive POV narrative that connects this event to broader industry trends, historical context, and gives a comprehensive, immersive summary of the strategic landscape.]
 """
 
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
@@ -152,14 +153,14 @@ AI NARRATIVE:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=180.0) as client:
             resp = await client.post(
                 ollama_url,
                 json={
                     "model": ollama_model,
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"temperature": 0.4, "num_predict": 700},
+                    "options": {"temperature": 0.5, "num_predict": 1200},
                 },
             )
             if resp.status_code == 200:

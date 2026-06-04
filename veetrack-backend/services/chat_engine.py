@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Optional
 
 import httpx
 
@@ -89,7 +88,6 @@ async def start_session(
 
     try:
         import faiss
-        import numpy as np
 
         from services.ml_models import get_embed_model
         _embed_model = get_embed_model()
@@ -129,7 +127,6 @@ async def ask_question(session_id: str, question: str) -> str:
     context_chunks: list[str] = []
 
     if faiss_data and "index" in faiss_data:
-        import numpy as np
         q_embed = faiss_data["model"].encode([question]).astype("float32")
         _, indices = faiss_data["index"].search(q_embed, k=min(3, len(chunks)))
         context_chunks = [chunks[i] for i in indices[0] if i < len(chunks)]

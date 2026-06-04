@@ -13,9 +13,7 @@ even if zero models are available.
 
 from __future__ import annotations
 
-import hashlib
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +210,6 @@ def compute_trend_score(keyword: str, source: str,
 
     # Volume spike (0-40 points)
     if len(hourly_volume) >= 4:
-        import numpy as np
         recent = sum(hourly_volume[-2:]) / 2
         baseline = sum(hourly_volume[:-2]) / max(len(hourly_volume)-2, 1)
         if baseline > 0:
