@@ -263,7 +263,7 @@ async def get_intelligence(req: IntelligenceRequest):
     llm_brief = await _generate_executive_brief_llm(keyword, keyword, articles)
     
     # Deep LLM Analysis for top articles (Sequential to avoid overloading Ollama GPU)
-    top_articles = articles[:15] # Limit to top 15
+    top_articles = articles[:10] # Limit to top 10
     for a in top_articles:
         ans = await _generate_article_analysis_llm(a)
         if isinstance(ans, dict):
