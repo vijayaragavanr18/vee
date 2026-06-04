@@ -16,7 +16,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 CHAT_SESSION_TTL = 1800  # 30 minutes
-OLLAMA_MODEL = "qwen2.5:3b"  # Always use 3b parameter model
+OLLAMA_MODEL = "llama3.2"  # Always use the 3B parameter model
 
 # In-memory FAISS index store (complement to Redis session metadata)
 _faiss_indexes: dict[str, dict] = {}
