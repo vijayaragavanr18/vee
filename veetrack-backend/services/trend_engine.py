@@ -33,7 +33,7 @@ async def record_keyword_volume(keyword: str, count: int) -> None:
         r = await get_cache()
         if r:
             hour_key = f"vol:{keyword}:{datetime.utcnow().strftime('%Y-%m-%d-%H')}"
-            await r.setex(hour_key, 691200, str(count))  # 8 days TTL
+            await r.set(hour_key, str(count), ex=691200)  # 8 days TTL
             return
     except Exception as e:
         logger.debug(f"Redis record_keyword_volume failed: {e}")
@@ -135,7 +135,7 @@ async def store_sentiment(keyword: str, sentiment: str) -> None:
         from core.cache_client import get_cache
         r = await get_cache()
         if r:
-            await r.setex(f"sent:{keyword}:prev", 7200, sentiment)
+            await r.set(f"sent:{keyword}:prev", sentiment, ex=7200)
     except Exception:
         pass
 

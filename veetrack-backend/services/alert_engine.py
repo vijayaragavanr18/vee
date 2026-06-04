@@ -132,7 +132,7 @@ async def evaluate_real_thresholds(keyword: str, articles: list) -> list[dict]:
         if r:
             prev_trend_raw = await r.get(f"trend:{keyword}:prev")
             prev_trend = int(prev_trend_raw) if prev_trend_raw else 0
-            await r.setex(f"trend:{keyword}:prev", 86400, str(trend))
+            await r.set(f"trend:{keyword}:prev", str(trend), ex=86400)
         if trend > 60 and prev_trend < 30:
             alerts.append(_build_alert(
                 "trend_emerging", "medium", keyword,
@@ -159,7 +159,7 @@ async def evaluate_real_thresholds(keyword: str, articles: list) -> list[dict]:
                     score=len(new_sources), threshold=1,
                 ))
             if curr_sources:
-                await r.setex(f"sources:{keyword}", 604800, json.dumps(list(curr_sources)))
+                await r.set(f"sources:{keyword}", json.dumps(list(curr_sources)), ex=604800)
     except Exception as e:
         logger.debug(f"New source check failed: {e}")
 

@@ -43,7 +43,7 @@ async def _save_session_meta(session_id: str, data: dict) -> None:
         from core.cache_client import get_cache
         r = await get_cache()
         if r:
-            await r.setex(f"chat:{session_id}", CHAT_SESSION_TTL, json.dumps(data))
+            await r.set(f"chat:{session_id}", json.dumps(data), ex=CHAT_SESSION_TTL)
     except Exception as e:
         logger.debug(f"Redis chat save failed: {e}")
 

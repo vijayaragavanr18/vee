@@ -23,7 +23,7 @@ try:
             enriched = asyncio.run(process_articles(articles)) if articles else []
             cache_key = f"feed:{keyword.lower().replace(' ', '_')}"
             if redis_sync:
-                redis_sync.setex(cache_key, 1800, json.dumps(enriched))
+                redis_sync.set(cache_key, json.dumps(enriched), ex=1800)
                 redis_sync.sadd("active_keywords", keyword)
                 redis_sync.expire("active_keywords", 86400)
             asyncio.run(record_keyword_volume(keyword, len(enriched)))

@@ -84,7 +84,7 @@ async def save_brief(brief: TrackingBrief):
         from core.cache_client import get_cache
         r = await get_cache()
         if r:
-            await r.setex(f"brief:{brief.client_id}", 2592000, brief.model_dump_json())
+            await r.set(f"brief:{brief.client_id}", brief.model_dump_json(), ex=2592000)
             await r.sadd("all_clients", brief.client_id)
     except Exception as e:
         logger.warning(f"Redis save failed: {e}")

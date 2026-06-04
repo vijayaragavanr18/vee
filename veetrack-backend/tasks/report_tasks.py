@@ -56,7 +56,7 @@ try:
 
             # Save to Redis for download
             if pdf_bytes:
-                redis_sync.setex(f"report:{client_id}:{today}", 172800, pdf_bytes)
+                redis_sync.set(f"report:{client_id}:{today}", pdf_bytes, ex=172800)
 
             # Email the report
             send_report_email(

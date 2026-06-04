@@ -403,5 +403,5 @@ async def trigger_report_now(client_id: str):
             industry_articles=[],
         )
         if r:
-            await r.setex(f"report:{client_id}:{today}", 172800, pdf_bytes)
+            await r.set(f"report:{client_id}:{today}", pdf_bytes, ex=172800)
         return {"status": "generated_sync", "client_id": client_id, "note": str(e)}
