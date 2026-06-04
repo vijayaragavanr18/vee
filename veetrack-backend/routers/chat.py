@@ -2,7 +2,7 @@
 Chat router — /api/chat endpoints.
 
 Article chat sessions using FAISS + MiniLM for retrieval
-and Ollama/Qwen for generation (with mock fallback).
+and Ollama/Llama for generation (with mock fallback).
 Sessions are in-memory (Redis later).
 """
 

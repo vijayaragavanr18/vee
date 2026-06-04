@@ -13,15 +13,15 @@ echo ""
 echo "[1/4] Checking Database / Cache..."
 echo "Using SQLite and DiskCache natively. No Redis required ✓"
 
-# ── Ollama + qwen2.5:3b ──────────────────────────────────────
+# ── Ollama + llama3.2 ──────────────────────────────────────
 echo ""
 echo "[2/4] Checking Ollama..."
 if ! command -v ollama &>/dev/null; then
   echo "Installing Ollama..."
   curl -fsSL https://ollama.com/install.sh | sh
 fi
-ollama list 2>/dev/null | grep -q "qwen2.5:3b" || ollama pull qwen2.5:3b
-echo "Ollama + qwen2.5:3b ✓"
+ollama list 2>/dev/null | grep -q "llama3.2" || ollama pull llama3.2
+echo "Ollama + llama3.2 ✓"
 
 # ── Python venv + dependencies ─────────────────────────────────
 echo ""
