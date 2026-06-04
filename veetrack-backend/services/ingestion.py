@@ -432,6 +432,66 @@ async def fetch_youtube(keyword: str, limit: int = 5) -> list[dict]:
         return []
 
 
+# ── Source 8: StackOverflow (Free API) ──────────────────────────
+
+
+async def fetch_stackoverflow(keyword: str) -> list[dict]:
+    """Fetch recent questions from StackOverflow matching the keyword."""
+    # Using 'withbody' filter to get the question text
+    url = f"https://api.stackexchange.com/2.3/search?order=desc&sort=activity&intitle={quote_plus(keyword)}&site=stackoverflow&filter=withbody"
+    try:
+        async with _get_client(timeout=10) as client:
+            resp = await client.get(url)
+        data = resp.json()
+        articles = []
+        for item in data.get("items", [])[:10]:
+            articles.append({
+                "title": item.get("title", ""),
+                "url": item.get("link", ""),
+                "published_at": datetime.fromtimestamp(item.get("creation_date", 0), timezone.utc).isoformat(),
+                "source": "StackOverflow",
+                "body_text": _strip_html(item.get("body", "")),
+                "origin": "stackoverflow",
+            })
+        return articles
+    except Exception as e:
+        logger.warning("[StackOverflow] Error for '%s': %s", keyword, e)
+        return []
+
+
+# ── Source 9: Yahoo News/Finance RSS (Free) ─────────────────────
+
+
+async def fetch_yahoo_finance(keyword: str) -> list[dict]:
+    """Fetch from Yahoo News/Finance RSS."""
+    if not HAS_FEEDPARSER:
+        return []
+    url = f"https://news.yahoo.com/rss/search?p={quote_plus(keyword)}"
+    try:
+        async with _get_client(timeout=10) as client:
+            resp = await client.get(url)
+        feed = feedparser.parse(resp.text)
+        articles = []
+        for entry in feed.entries[:10]:
+            try:
+                published = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
+            except Exception:
+                published = datetime.now(timezone.utc)
+
+            articles.append({
+                "title": entry.get("title", ""),
+                "url": entry.get("link", ""),
+                "published_at": published.isoformat(),
+                "source": entry.get("source", {}).get("title", "Yahoo News"),
+                "body_text": _strip_html(entry.get("summary", "")),
+                "origin": "yahoo_finance",
+            })
+        return articles
+    except Exception as e:
+        logger.warning("[Yahoo Finance] Error for '%s': %s", keyword, e)
+        return []
+
+
 # ── Parallel Fetch Orchestrator ─────────────────────────────────
 
 
@@ -454,6 +514,8 @@ async def fetch_all_sources(
             fetch_wikimedia(keyword),
             fetch_reddit(keyword),
             fetch_youtube(keyword),
+            fetch_stackoverflow(keyword),
+            fetch_yahoo_finance(keyword),
             return_exceptions=True,
         )
         for batch in results:
