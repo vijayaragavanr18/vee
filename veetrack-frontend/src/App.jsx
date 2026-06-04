@@ -233,6 +233,7 @@ export default function Home() {
               publishedAt: item.date || 'Recent',
               readingTime: '3 min read',
               source: item.publication,
+              url: item.url,
               sentiment: item.sentiment === 'positive' || item.sentiment === 'negative' ? item.sentiment : 'neutral',
               content: `<p class="mb-4">${item.fullContent || item.snippet}</p>`,
               aiNarrative: storyNarrative

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, ChevronRight, MessageSquare, Send, X, Loader2 } from 'lucide-react';
+import { ExternalLink, ChevronRight, MessageSquare, Send, X, Loader2 } from 'lucide-react';
 export const NewsCard = ({
   article,
   stateClass,
@@ -138,10 +138,14 @@ export const NewsCard = ({
               <button onClick={!isTop ? (e) => {
               e.preventDefault();
               e.stopPropagation();
-              onReadFullStory(article);
-            } : undefined} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} tabIndex={isTop ? -1 : 0} disabled={isTop} className={`inline-flex items-center gap-1.5 text-primary font-label-md text-label-md transition-colors ${isTop ? 'pointer-events-none opacity-50' : 'hover:text-primary-container cursor-pointer'}`}>
-                Read full story
-                <ArrowRight size={14} className="animate-pulse" />
+              if (article.url) {
+                window.open(article.url, '_blank', 'noopener,noreferrer');
+              } else {
+                onReadFullStory(article);
+              }
+            } : undefined} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} tabIndex={isTop ? -1 : 0} disabled={isTop} className={`inline-flex items-center gap-1.5 text-blue-400 font-label-md text-[12px] font-semibold tracking-wide uppercase transition-colors ${isTop ? 'pointer-events-none opacity-50' : 'hover:text-blue-300 cursor-pointer'}`}>
+                Read Original Story
+                <ExternalLink size={14} className="opacity-80" />
               </button>
               <span className="text-[11px] text-on-surface-variant/40 flex items-center gap-1">Swipe left <ChevronRight size={10} /></span>
             </div>
