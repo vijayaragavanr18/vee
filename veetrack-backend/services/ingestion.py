@@ -409,9 +409,19 @@ async def fetch_youtube(keyword: str, limit: int = 5) -> list[dict]:
             
             transcript_text = ""
             try:
-                # Fetch transcript (also synchronous, run in executor)
-                transcript_list = await loop.run_in_executor(None, YouTubeTranscriptApi.get_transcript, video_id)
-                transcript_text = " ".join([t['text'] for t in transcript_list])
+                # Fetch and Auto-Translate transcript to English
+                def _get_en_transcript(vid):
+                    transcript_list = YouTubeTranscriptApi.list_transcripts(vid)
+                    try:
+                        return transcript_list.find_transcript(['en']).fetch()
+                    except Exception:
+                        for transcript in transcript_list:
+                            if transcript.is_translatable:
+                                return transcript.translate('en').fetch()
+                        raise Exception("No translatable transcript")
+                        
+                fetched_transcript = await loop.run_in_executor(None, _get_en_transcript, video_id)
+                transcript_text = " ".join([t['text'] for t in fetched_transcript])
             except Exception:
                 # Fallback to description snippet if no subtitles exist
                 snippets = video.get("descriptionSnippet", [])
