@@ -78,7 +78,7 @@ No other text. No preamble. Just the 4 lines above."""
     }
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             resp = await client.post(
                 ollama_url,
                 json={
@@ -153,7 +153,7 @@ AI NARRATIVE:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             resp = await client.post(
                 ollama_url,
                 json={
@@ -263,14 +263,15 @@ async def get_intelligence(req: IntelligenceRequest):
     # Executive brief
     llm_brief = await _generate_executive_brief_llm(keyword, keyword, articles)
     
-    # Deep LLM Analysis for top articles (Sequential to avoid overloading Ollama GPU)
-    top_articles = articles[:10] # Limit to top 10
-    for a in top_articles:
-        ans = await _generate_article_analysis_llm(a)
-        if isinstance(ans, dict):
-            a["llm_what_happened"] = ans.get("whatHappened", "")
-            a["llm_why_it_matters"] = ans.get("whyItMatters", "")
-            a["llm_ai_narrative"] = ans.get("aiNarrative", "")
+    # Deep LLM Analysis is DISABLED here to guarantee < 30 second response times.
+    # Individual article analysis will rely on the blazing-fast NLP pipeline (Sentiment/NER).
+    # top_articles = articles[:3] 
+    # for a in top_articles:
+    #     ans = await _generate_article_analysis_llm(a)
+    #     if isinstance(ans, dict):
+    #         a["llm_what_happened"] = ans.get("whatHappened", "")
+    #         a["llm_why_it_matters"] = ans.get("whyItMatters", "")
+    #         a["llm_ai_narrative"] = ans.get("aiNarrative", "")
 
     # Helper to map backend article to frontend ScoredArticle shape
     def map_to_scored_article(a: dict, section: str = "company") -> dict:
