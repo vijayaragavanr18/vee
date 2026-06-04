@@ -49,3 +49,6 @@ reportlab>=4.1.0
 python-dateutil>=2.9.0
 trafilatura>=1.8.0
 
+# ── YouTube ──────────────────────────────────────────────────────
+youtube-transcript-api>=0.6.2
+youtube-search-python>=1.6.6

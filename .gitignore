@@ -56,3 +56,5 @@ test_report.pdf
 # ── Docker volumes ───────────────────────────────────────
 redis_data/
 model_cache/
+
+Check/

@@ -362,6 +362,76 @@ async def fetch_wikimedia(keyword: str) -> list[dict]:
         return []
 
 
+# ── Source 6: Reddit (Free JSON endpoint) ───────────────────────
+
+
+async def fetch_reddit(keyword: str, limit: int = 10) -> list[dict]:
+    """Fetch recent posts from Reddit using the free JSON search endpoint."""
+    url = f"https://www.reddit.com/search.json?q={quote_plus(keyword)}&sort=new&limit={limit}"
+    try:
+        async with _get_client(timeout=10, follow_redirects=True) as client:
+            resp = await client.get(url, headers={"User-Agent": "VeeTrack/1.0 (media intelligence bot)"})
+        data = resp.json()
+        articles = []
+        for child in data.get("data", {}).get("children", []):
+            post = child.get("data", {})
+            articles.append({
+                "title": post.get("title", ""),
+                "url": f"https://reddit.com{post.get('permalink', '')}",
+                "published_at": datetime.fromtimestamp(post.get("created_utc", 0), timezone.utc).isoformat(),
+                "source": f"Reddit (r/{post.get('subreddit', 'unknown')})",
+                "body_text": post.get("selftext", ""),
+                "origin": "reddit",
+            })
+        return articles
+    except Exception as e:
+        logger.warning("[Reddit] Error for '%s': %s", keyword, e)
+        return []
+
+
+# ── Source 7: YouTube Transcripts (Free API) ────────────────────
+
+
+async def fetch_youtube(keyword: str, limit: int = 5) -> list[dict]:
+    """Search YouTube and download transcripts for the top videos."""
+    try:
+        from youtubesearchpython import VideosSearch
+        from youtube_transcript_api import YouTubeTranscriptApi
+        
+        # Run synchronous search in an executor to avoid blocking async loop
+        loop = asyncio.get_running_loop()
+        videosSearch = VideosSearch(keyword, limit=limit)
+        results = await loop.run_in_executor(None, videosSearch.result)
+        
+        articles = []
+        for video in results.get("result", []):
+            video_id = video.get("id")
+            
+            transcript_text = ""
+            try:
+                # Fetch transcript (also synchronous, run in executor)
+                transcript_list = await loop.run_in_executor(None, YouTubeTranscriptApi.get_transcript, video_id)
+                transcript_text = " ".join([t['text'] for t in transcript_list])
+            except Exception:
+                # Fallback to description snippet if no subtitles exist
+                snippets = video.get("descriptionSnippet", [])
+                if snippets:
+                    transcript_text = " ".join([s.get("text", "") for s in snippets])
+
+            articles.append({
+                "title": video.get("title", ""),
+                "url": video.get("link", ""),
+                "published_at": datetime.now(timezone.utc).isoformat(),
+                "source": f"YouTube ({video.get('channel', {}).get('name', 'YouTube')})",
+                "body_text": transcript_text[:5000], # Limit length to save memory
+                "origin": "youtube",
+            })
+        return articles
+    except Exception as e:
+        logger.warning("[YouTube] Error for '%s': %s", keyword, e)
+        return []
+
+
 # ── Parallel Fetch Orchestrator ─────────────────────────────────
 
 
@@ -382,6 +452,8 @@ async def fetch_all_sources(
             fetch_hackernews(keyword, days),
             fetch_mastodon(keyword),
             fetch_wikimedia(keyword),
+            fetch_reddit(keyword),
+            fetch_youtube(keyword),
             return_exceptions=True,
         )
         for batch in results:
