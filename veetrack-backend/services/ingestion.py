@@ -492,6 +492,120 @@ async def fetch_yahoo_finance(keyword: str) -> list[dict]:
         return []
 
 
+# ── Source 10: App Store Reviews (Free API) ──────────────────────
+
+
+async def fetch_app_store_reviews(keyword: str) -> list[dict]:
+    """Search iTunes for the app and fetch recent 1-star/2-star reviews."""
+    search_url = f"https://itunes.apple.com/search?term={quote_plus(keyword)}&entity=software&limit=1"
+    try:
+        async with _get_client(timeout=10) as client:
+            search_resp = await client.get(search_url)
+        search_data = search_resp.json()
+        if not search_data.get("results"):
+            return []
+        
+        app_id = search_data["results"][0]["trackId"]
+        app_name = search_data["results"][0]["trackName"]
+        
+        reviews_url = f"https://itunes.apple.com/us/rss/customerreviews/id={app_id}/sortBy=mostRecent/json"
+        async with _get_client(timeout=10) as client:
+            reviews_resp = await client.get(reviews_url)
+        reviews_data = reviews_resp.json()
+        
+        articles = []
+        entries = reviews_data.get("feed", {}).get("entry", [])
+        if isinstance(entries, dict):
+            entries = [entries]
+            
+        for entry in entries[:10]:
+            if not isinstance(entry, dict) or "title" not in entry:
+                continue
+            rating = entry.get("im:rating", {}).get("label", "5")
+            # Only track bad reviews (1, 2, or 3 stars) for crisis detection
+            if int(rating) > 3:
+                continue
+                
+            title = entry.get("title", {}).get("label", "")
+            content = entry.get("content", {}).get("label", "")
+            
+            articles.append({
+                "title": f"{rating} Star Review: {title}",
+                "url": search_data["results"][0].get("trackViewUrl", ""),
+                "published_at": datetime.now(timezone.utc).isoformat(),
+                "source": f"App Store ({app_name})",
+                "body_text": content,
+                "origin": "app_store",
+            })
+        return articles
+    except Exception as e:
+        logger.warning("[App Store] Error for '%s': %s", keyword, e)
+        return []
+
+
+# ── Source 11: NewsData.io (Requires API Key) ───────────────────
+
+
+async def fetch_newsdata(keyword: str) -> list[dict]:
+    """Fetch from NewsData.io if API key is present."""
+    import os
+    api_key = os.getenv("NEWSDATA_API_KEY")
+    if not api_key:
+        return []
+        
+    url = f"https://newsdata.io/api/1/news?apikey={api_key}&q={quote_plus(keyword)}&language=en"
+    try:
+        async with _get_client(timeout=10) as client:
+            resp = await client.get(url)
+        data = resp.json()
+        articles = []
+        for item in data.get("results", [])[:10]:
+            body_text = item.get("content") or item.get("description", "")
+            articles.append({
+                "title": item.get("title", ""),
+                "url": item.get("link", ""),
+                "published_at": item.get("pubDate", datetime.now(timezone.utc).isoformat()),
+                "source": item.get("source_id", "NewsData.io"),
+                "body_text": body_text,
+                "origin": "newsdata",
+            })
+        return articles
+    except Exception as e:
+        logger.warning("[NewsData.io] Error for '%s': %s", keyword, e)
+        return []
+
+
+# ── Source 12: Alpha Vantage (Requires API Key) ─────────────────
+
+
+async def fetch_alpha_vantage(keyword: str) -> list[dict]:
+    """Fetch from Alpha Vantage if API key is present."""
+    import os
+    api_key = os.getenv("ALPHAVANTAGE_API_KEY")
+    if not api_key:
+        return []
+        
+    url = f"https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers={quote_plus(keyword)}&apikey={api_key}"
+    try:
+        async with _get_client(timeout=10) as client:
+            resp = await client.get(url)
+        data = resp.json()
+        articles = []
+        for item in data.get("feed", [])[:5]:
+            articles.append({
+                "title": item.get("title", ""),
+                "url": item.get("url", ""),
+                "published_at": datetime.now(timezone.utc).isoformat(),
+                "source": item.get("source", "Alpha Vantage"),
+                "body_text": item.get("summary", ""),
+                "origin": "alpha_vantage",
+            })
+        return articles
+    except Exception as e:
+        logger.warning("[Alpha Vantage] Error for '%s': %s", keyword, e)
+        return []
+
+
 # ── Parallel Fetch Orchestrator ─────────────────────────────────
 
 
@@ -516,6 +630,9 @@ async def fetch_all_sources(
             fetch_youtube(keyword),
             fetch_stackoverflow(keyword),
             fetch_yahoo_finance(keyword),
+            fetch_app_store_reviews(keyword),
+            fetch_newsdata(keyword),
+            fetch_alpha_vantage(keyword),
             return_exceptions=True,
         )
         for batch in results:
