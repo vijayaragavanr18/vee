@@ -78,7 +78,7 @@ No other text. No preamble. Just the 4 lines above."""
     }
 
     try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.post(
                 ollama_url,
                 json={
@@ -152,7 +152,7 @@ AI NARRATIVE:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.post(
                 ollama_url,
                 json={
