@@ -68,7 +68,7 @@ No other text. No preamble. Just the 4 lines above."""
     import httpx
 
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
+    ollama_model = os.getenv("OLLAMA_MODEL", "gemma:2b")
 
     result = {
         "happened": "Analysis unavailable.",
@@ -124,27 +124,27 @@ async def _generate_article_analysis_llm(article: dict) -> dict:
         content = article.get("summary", title)
         
     prompt = f"""You are a Senior Corporate Intelligence Analyst at an elite PR tracking firm. 
-Provide a master-level, highly elaborate analysis of the following article. Your analysis must be comprehensive enough to fill a full-page executive report.
+Provide a master-level, highly elaborate analysis of the following article. Your analysis must be massively comprehensive, literally filling a full-page executive report.
 
 ARTICLE: {title}
 {content[:2000]}
 
-Write exactly three detailed sections. Make each section an extremely comprehensive, multi-sentence paragraph (at least 5-7 long sentences) packed with strategic insights, market context, and corporate intelligence. Use a highly professional, authoritative tone.
+Write exactly three detailed sections. Make each section a massive, extremely comprehensive, multi-paragraph text (at least 8-10 long sentences per section) packed with strategic insights, market context, and corporate intelligence. Use a highly professional, authoritative tone.
 
 Format your response exactly like this:
 
 WHAT HAPPENED:
-[Extremely elaborate paragraph detailing the core events, background context, key players, and specific facts mentioned in the article.]
+[Massive, extremely elaborate multi-sentence analysis detailing the core events, background context, key players, and specific facts mentioned in the article.]
 
 WHY IT MATTERS:
-[Extremely elaborate paragraph explaining the strategic business impact, market consequences, brand reputation implications, and deep industry consequences.]
+[Massive, extremely elaborate multi-sentence analysis explaining the strategic business impact, market consequences, brand reputation implications, and deep industry consequences.]
 
 AI NARRATIVE:
-[A rich, storytelling-style cognitive POV narrative that connects this event to broader industry trends, historical context, and gives a comprehensive, immersive summary of the strategic landscape.]
+[A massive, storytelling-style cognitive POV narrative that connects this event to broader industry trends, historical context, and gives a comprehensive, immersive summary of the strategic landscape.]
 """
 
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2")
+    ollama_model = os.getenv("OLLAMA_MODEL", "gemma:2b")
 
     result = {
         "whatHappened": "",
@@ -263,15 +263,14 @@ async def get_intelligence(req: IntelligenceRequest):
     # Executive brief
     llm_brief = await _generate_executive_brief_llm(keyword, keyword, articles)
     
-    # Deep LLM Analysis is DISABLED here to guarantee < 30 second response times.
-    # Individual article analysis will rely on the blazing-fast NLP pipeline (Sentiment/NER).
-    # top_articles = articles[:3] 
-    # for a in top_articles:
-    #     ans = await _generate_article_analysis_llm(a)
-    #     if isinstance(ans, dict):
-    #         a["llm_what_happened"] = ans.get("whatHappened", "")
-    #         a["llm_why_it_matters"] = ans.get("whyItMatters", "")
-    #         a["llm_ai_narrative"] = ans.get("aiNarrative", "")
+    # Deep LLM Analysis for top articles
+    top_articles = articles[:2] # Limit to top 2 to balance speed and deep analysis
+    for a in top_articles:
+        ans = await _generate_article_analysis_llm(a)
+        if isinstance(ans, dict):
+            a["llm_what_happened"] = ans.get("whatHappened", "")
+            a["llm_why_it_matters"] = ans.get("whyItMatters", "")
+            a["llm_ai_narrative"] = ans.get("aiNarrative", "")
 
     # Helper to map backend article to frontend ScoredArticle shape
     def map_to_scored_article(a: dict, section: str = "company") -> dict:
