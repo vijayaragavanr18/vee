@@ -11,9 +11,9 @@ try:
     from services.ingestion import fetch_all_sources
     from services.nlp_pipeline import process_articles
     from services.trend_engine import record_keyword_volume
-    from core.redis_client import get_sync_redis
+    from core.cache_client import get_sync_cache
 
-    redis_sync = get_sync_redis()
+    redis_sync = get_sync_cache()
 
     @app.task(bind=True, max_retries=3, default_retry_delay=60)
     def process_keyword(self, keyword: str):

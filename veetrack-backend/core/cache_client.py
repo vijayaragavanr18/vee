@@ -11,7 +11,7 @@ CACHE_DIR = os.getenv("CACHE_DIR", ".veetrack_cache")
 # Thread-safe, process-safe cache
 _cache = Cache(CACHE_DIR)
 
-class MockAsyncRedis:
+class AsyncCache:
     async def get(self, key: str) -> str | None:
         return _cache.get(key)
         
@@ -40,7 +40,29 @@ class MockAsyncRedis:
     def pubsub(self):
         raise RuntimeError("Pub/Sub not supported by DiskCache fallback")
 
-class MockSyncRedis:
+    async def sadd(self, key: str, *values: str):
+        import json
+        existing = _cache.get(key)
+        s = set(json.loads(existing)) if existing else set()
+        for v in values:
+            s.add(v)
+        _cache.set(key, json.dumps(list(s)))
+
+    async def smembers(self, key: str) -> set:
+        import json
+        existing = _cache.get(key)
+        return set(json.loads(existing)) if existing else set()
+
+    async def srem(self, key: str, *values: str):
+        import json
+        existing = _cache.get(key)
+        if existing:
+            s = set(json.loads(existing))
+            for v in values:
+                s.discard(v)
+            _cache.set(key, json.dumps(list(s)))
+
+class SyncCache:
     def get(self, key: str) -> str | None:
         return _cache.get(key)
         
@@ -54,14 +76,36 @@ class MockSyncRedis:
         for k in keys:
             _cache.delete(k)
 
-async def get_redis() -> MockAsyncRedis:
+    def sadd(self, key: str, *values: str):
+        import json
+        existing = _cache.get(key)
+        s = set(json.loads(existing)) if existing else set()
+        for v in values:
+            s.add(v)
+        _cache.set(key, json.dumps(list(s)))
+
+    def smembers(self, key: str) -> set:
+        import json
+        existing = _cache.get(key)
+        return set(json.loads(existing)) if existing else set()
+
+    def srem(self, key: str, *values: str):
+        import json
+        existing = _cache.get(key)
+        if existing:
+            s = set(json.loads(existing))
+            for v in values:
+                s.discard(v)
+            _cache.set(key, json.dumps(list(s)))
+
+async def get_cache() -> AsyncCache:
     """Return shared async cache client."""
-    return MockAsyncRedis()
+    return AsyncCache()
 
-def get_sync_redis() -> MockSyncRedis:
+def get_sync_cache() -> SyncCache:
     """Return a synchronous cache client (for Celery tasks)."""
-    return MockSyncRedis()
+    return SyncCache()
 
-async def redis_available() -> bool:
+async def cache_available() -> bool:
     """Check if cache is reachable."""
     return True

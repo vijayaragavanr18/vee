@@ -81,8 +81,8 @@ ZEE5_BRIEF = TrackingBrief(
 async def save_brief(brief: TrackingBrief):
     """Save or update a client tracking brief."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             await r.setex(f"brief:{brief.client_id}", 2592000, brief.model_dump_json())
             await r.sadd("all_clients", brief.client_id)
@@ -95,8 +95,8 @@ async def save_brief(brief: TrackingBrief):
 async def list_briefs():
     """List all client tracking briefs."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             client_ids = await r.smembers("all_clients")
             if not client_ids:
@@ -119,8 +119,8 @@ async def list_briefs():
 async def get_brief(client_id: str):
     """Get a specific client brief by ID."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             raw = await r.get(f"brief:{client_id}")
             if raw:
@@ -136,8 +136,8 @@ async def get_brief(client_id: str):
 async def delete_brief(client_id: str):
     """Delete a client brief."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             await r.delete(f"brief:{client_id}")
             await r.srem("all_clients", client_id)

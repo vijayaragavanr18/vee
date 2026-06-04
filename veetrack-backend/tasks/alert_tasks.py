@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 try:
     from celery_app import app
-    from core.redis_client import get_sync_redis
+    from core.cache_client import get_sync_cache
 
-    redis_sync = get_sync_redis()
+    redis_sync = get_sync_cache()
 
     @app.task
     def evaluate_all_keywords():

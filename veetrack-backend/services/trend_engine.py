@@ -29,8 +29,8 @@ except ImportError:
 async def record_keyword_volume(keyword: str, count: int) -> None:
     """Store hourly article count in Redis. TTL 8 days."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             hour_key = f"vol:{keyword}:{datetime.utcnow().strftime('%Y-%m-%d-%H')}"
             await r.setex(hour_key, 691200, str(count))  # 8 days TTL
@@ -52,8 +52,8 @@ async def record_keyword_volume(keyword: str, count: int) -> None:
 async def get_hourly_volume(keyword: str) -> list[int]:
     """Returns list of 24 ints (last 24 hours, oldest first). Returns [0]*24 if no data."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             now = datetime.utcnow()
             volumes = []
@@ -74,8 +74,8 @@ async def compute_trend_score(keyword: str, current_count: int) -> int:
     Uses Redis 7-day history if available, falls back to in-memory.
     """
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             now = datetime.utcnow()
             history = []
@@ -119,8 +119,8 @@ async def compute_trend_score(keyword: str, current_count: int) -> int:
 async def get_prev_sentiment(keyword: str) -> str:
     """Get previous batch majority sentiment from Redis."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             val = await r.get(f"sent:{keyword}:prev")
             return val or "neutral"
@@ -132,8 +132,8 @@ async def get_prev_sentiment(keyword: str) -> str:
 async def store_sentiment(keyword: str, sentiment: str) -> None:
     """Store current sentiment for next comparison. TTL 2 hours."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             await r.setex(f"sent:{keyword}:prev", 7200, sentiment)
     except Exception:

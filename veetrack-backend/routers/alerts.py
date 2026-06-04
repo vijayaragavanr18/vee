@@ -30,8 +30,8 @@ async def stream_alerts(request: Request, keywords: str = ""):
     async def redis_event_generator():
         """Stream alerts from Redis pub/sub."""
         try:
-            from core.redis_client import get_redis
-            r = await get_redis()
+            from core.cache_client import get_cache
+            r = await get_cache()
             if not r:
                 raise RuntimeError("Redis unavailable")
             pubsub = r.pubsub()

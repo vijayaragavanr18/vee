@@ -41,8 +41,8 @@ def _chunk_text(text: str, size: int = 256, overlap: int = 50) -> list[str]:
 async def _save_session_meta(session_id: str, data: dict) -> None:
     """Save session metadata (title, chunks) to Redis."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             await r.setex(f"chat:{session_id}", CHAT_SESSION_TTL, json.dumps(data))
     except Exception as e:
@@ -52,8 +52,8 @@ async def _save_session_meta(session_id: str, data: dict) -> None:
 async def _get_session_meta(session_id: str) -> dict | None:
     """Retrieve session metadata from Redis."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             val = await r.get(f"chat:{session_id}")
             return json.loads(val) if val else None
@@ -65,8 +65,8 @@ async def _get_session_meta(session_id: str) -> dict | None:
 async def _delete_session_meta(session_id: str) -> None:
     """Delete session metadata from Redis."""
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
         if r:
             await r.delete(f"chat:{session_id}")
     except Exception:

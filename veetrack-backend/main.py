@@ -51,23 +51,23 @@ logger = logging.getLogger("veetrack")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    from core.redis_client import get_redis, redis_available
+    from core.cache_client import get_cache, cache_available
     try:
-        r = await get_redis()
-        app.state.redis = r
-        is_up = await redis_available()
+        r = await get_cache()
+        app.state.cache = r
+        is_up = await cache_available()
         if is_up:
             logger.info("DiskCache (Local DB) connected ✓")
         else:
             logger.warning("Local Cache unavailable — trend history will be in-memory only")
     except Exception as e:
         logger.warning(f"Cache startup error: {e}")
-        app.state.redis = None
+        app.state.cache = None
     yield
     # Shutdown
     try:
-        if hasattr(app.state, "redis") and app.state.redis:
-            await app.state.redis.aclose()
+        if hasattr(app.state, "redis") and app.state.cache:
+            await app.state.cache.aclose()
     except Exception:
         pass
 
@@ -85,7 +85,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000').split(','),
+    allow_origins=os.getenv(
+        'ALLOWED_ORIGINS',
+        'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,http://localhost'
+    ).split(','),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,8 +110,8 @@ app.include_router(tracking_brief_router)
 @app.get("/health")
 async def health():
     """Basic health check endpoint."""
-    from core.redis_client import redis_available
-    redis_up = await redis_available()
+    from core.cache_client import cache_available
+    redis_up = await cache_available()
     return {
         "status": "ok",
         "service": "veetrack-backend",

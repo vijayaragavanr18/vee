@@ -262,14 +262,10 @@ async def get_intelligence(req: IntelligenceRequest):
     # Executive brief
     llm_brief = await _generate_executive_brief_llm(keyword, keyword, articles)
     
-    # Deep LLM Analysis for top articles
-    import asyncio
-    top_articles = articles[:5]
-    analysis_tasks = [_generate_article_analysis_llm(a) for a in top_articles]
-    analyses = await asyncio.gather(*analysis_tasks, return_exceptions=True)
-    
-    for i, a in enumerate(top_articles):
-        ans = analyses[i]
+    # Deep LLM Analysis for top articles (Sequential to avoid overloading Ollama GPU)
+    top_articles = articles[:15] # Limit to top 15
+    for a in top_articles:
+        ans = await _generate_article_analysis_llm(a)
         if isinstance(ans, dict):
             a["llm_what_happened"] = ans.get("whatHappened", "")
             a["llm_why_it_matters"] = ans.get("whyItMatters", "")
@@ -365,8 +361,8 @@ async def get_intelligence(req: IntelligenceRequest):
 @router.get("/api/report/download/{client_id}")
 async def download_report(client_id: str, date: str = None):
     """Download the latest PDF report for a client from Redis cache."""
-    from core.redis_client import get_redis
-    r = await get_redis()
+    from core.cache_client import get_cache
+    r = await get_cache()
     if not r:
         raise HTTPException(status_code=503, detail="Redis unavailable")
     if not date:
@@ -392,11 +388,11 @@ async def trigger_report_now(client_id: str):
     except Exception as e:
         # If Celery not running, generate synchronously
         from services.report_generator import generate_daily_report_pdf
-        from core.redis_client import get_redis
+        from core.cache_client import get_cache
         from datetime import datetime
 
         today = datetime.utcnow().strftime("%Y-%m-%d")
-        r = await get_redis()
+        r = await get_cache()
         pdf_bytes = generate_daily_report_pdf(
             client_name=client_id.upper(),
             date=today,

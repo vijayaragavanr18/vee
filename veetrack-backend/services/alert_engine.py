@@ -69,8 +69,8 @@ async def evaluate_real_thresholds(keyword: str, articles: list) -> list[dict]:
     alerts: list[dict] = []
 
     try:
-        from core.redis_client import get_redis
-        r = await get_redis()
+        from core.cache_client import get_cache
+        r = await get_cache()
     except Exception:
         r = None
 
