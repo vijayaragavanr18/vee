@@ -44,8 +44,7 @@ nltk.download('stopwords', quiet=True)
 # Ollama / gemma2:2b
 echo "Checking Ollama..."
 if command -v ollama &>/dev/null; then
-  ollama list 2>/dev/null | grep -q "gemma2:2b" || ollama pull gemma2:2b
-  pgrep -x ollama >/dev/null 2>&1 || (ollama serve &>/tmp/ollama.log & sleep 2)
+  ollama list 2>/dev/null | grep -q "gemma2" || echo "Please ensure Gemma 2 is loaded."
   echo "Ollama ready (gemma2:2b) ✓"
 else
   echo "WARNING: Ollama not found. Chat falls back to context extraction."

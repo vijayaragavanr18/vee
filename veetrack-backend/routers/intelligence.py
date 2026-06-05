@@ -68,7 +68,7 @@ No other text. No preamble. Just the 4 lines above."""
     import httpx
 
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    ollama_model = os.getenv("OLLAMA_MODEL", "gemma2:2b")
+    ollama_model = os.getenv("OLLAMA_MODEL", "gemma-2-2b-it-Q4_K_M")
 
     result = {
         "happened": "Analysis unavailable.",
@@ -144,7 +144,7 @@ AI NARRATIVE:
 """
 
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    ollama_model = os.getenv("OLLAMA_MODEL", "gemma2:2b")
+    ollama_model = os.getenv("OLLAMA_MODEL", "gemma-2-2b-it-Q4_K_M")
 
     result = {
         "whatHappened": "",

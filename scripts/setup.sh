@@ -20,7 +20,7 @@ if ! command -v ollama &>/dev/null; then
   echo "Installing Ollama..."
   curl -fsSL https://ollama.com/install.sh | sh
 fi
-ollama list 2>/dev/null | grep -q "gemma2:2b" || ollama pull gemma2:2b
+ollama list 2>/dev/null | grep -q "gemma2" || echo "Please load gemma2 model."
 echo "Ollama + gemma2:2b ✓"
 
 # ── Python venv + dependencies ─────────────────────────────────

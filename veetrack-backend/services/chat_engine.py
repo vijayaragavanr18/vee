@@ -16,7 +16,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 CHAT_SESSION_TTL = 1800  # 30 minutes
-OLLAMA_MODEL = "gemma2:2b"  # Always use the local gemma2 model
+OLLAMA_MODEL = "gemma-2-2b-it-Q4_K_M"  # Always use the local gemma2 model
 
 # In-memory FAISS index store (complement to Redis session metadata)
 _faiss_indexes: dict[str, dict] = {}

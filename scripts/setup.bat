@@ -9,10 +9,9 @@ echo.
 
 echo [2/4] Checking Ollama...
 echo Ensure Ollama for Windows is installed from https://ollama.com/download
-ollama list 2>nul | findstr "gemma2:2b" >nul
+ollama list 2>nul | findstr "gemma2" >nul
 if errorlevel 1 (
-    echo Pulling gemma2:2b model...
-    ollama pull gemma2:2b
+    echo Please load your custom gemma2 model.
 ) else (
     echo Ollama + gemma2:2b [OK]
 )
