@@ -68,7 +68,7 @@ No other text. No preamble. Just the 4 lines above."""
     import httpx
 
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    ollama_model = os.getenv("OLLAMA_MODEL", "gemma:2b")
+    ollama_model = os.getenv("OLLAMA_MODEL", "gemma2:2b")
 
     result = {
         "happened": "Analysis unavailable.",
@@ -144,7 +144,7 @@ AI NARRATIVE:
 """
 
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    ollama_model = os.getenv("OLLAMA_MODEL", "gemma:2b")
+    ollama_model = os.getenv("OLLAMA_MODEL", "gemma2:2b")
 
     result = {
         "whatHappened": "",
@@ -264,7 +264,7 @@ async def get_intelligence(req: IntelligenceRequest):
     llm_brief = await _generate_executive_brief_llm(keyword, keyword, articles)
     
     # Deep LLM Analysis for top articles
-    top_articles = articles[:2] # Limit to top 2 to balance speed and deep analysis
+    top_articles = articles[:1] # Limit to top 1 to massively cut down wait time
     for a in top_articles:
         ans = await _generate_article_analysis_llm(a)
         if isinstance(ans, dict):
