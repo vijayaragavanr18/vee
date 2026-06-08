@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 # Model state globals
 _sentiment_model = None
-_nlp = None
 _embed_model = None
 _summarizer = None
 
@@ -30,34 +29,31 @@ def init_models():
                 model="cardiffnlp/twitter-roberta-base-sentiment-latest",
                 top_k=1,
             )
-            print("[Models] Cardiff RoBERTa loaded ✓")
+            print("[Models] Cardiff RoBERTa loaded [OK]")
         except Exception as e:
             print(f"[Models] RoBERTa failed to load: {e}")
             raise e
 
-    # 2. NER Model (spaCy)
-    if _nlp is None:
-        import spacy
-        try:
-            _nlp = spacy.load("en_core_web_trf")
-            print("[Models] spaCy en_core_web_trf loaded ✓")
-        except Exception as e:
-            print(f"[Models] spaCy en_core_web_trf failed to load, falling back to en_core_web_sm: {e}")
-            try:
-                _nlp = spacy.load("en_core_web_sm")
-                print("[Models] spaCy en_core_web_sm loaded ✓")
-            except Exception as e2:
-                print(f"[Models] spaCy en_core_web_sm failed to load: {e2}")
-                raise e2
 
-    # 3. Embeddings Model (all-MiniLM-L6-v2)
+
+    # 3. Embeddings Model (fastembed)
     if _embed_model is None:
         try:
-            from sentence_transformers import SentenceTransformer
-            _embed_model = SentenceTransformer("all-MiniLM-L6-v2")
-            print("[Models] all-MiniLM-L6-v2 loaded ✓")
+            from fastembed import TextEmbedding
+            from backend.device import DEVICE
+            providers = ["CUDAExecutionProvider"] if DEVICE == "cuda" else ["CPUExecutionProvider"]
+            try:
+                _embed_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5", providers=providers)
+                print(f"[Models] BAAI/bge-small-en-v1.5 loaded ({providers[0]}) [OK]")
+            except ValueError as e:
+                if "CUDAExecutionProvider" in str(e):
+                    print("[Models] ONNX CUDA not found, falling back to CPU for FastEmbed...")
+                    _embed_model = TextEmbedding(model_name="BAAI/bge-small-en-v1.5", providers=["CPUExecutionProvider"])
+                    print("[Models] BAAI/bge-small-en-v1.5 loaded (CPUExecutionProvider) [OK]")
+                else:
+                    raise e
         except Exception as e:
-            print(f"[Models] SentenceTransformer failed to load: {e}")
+            print(f"[Models] TextEmbedding failed to load: {e}")
             raise e
 
     # 4. Summarization (sumy TextRank)
@@ -65,7 +61,7 @@ def init_models():
         try:
             from sumy.summarizers.text_rank import TextRankSummarizer
             _summarizer = TextRankSummarizer()
-            print("[Models] sumy TextRank loaded ✓")
+            print("[Models] sumy TextRank loaded [OK]")
         except Exception as e:
             print(f"[Models] sumy TextRank failed to load: {e}")
             raise e
@@ -74,14 +70,11 @@ def init_models():
 def get_sentiment_model():
     return _sentiment_model
 
-def get_ner_model():
-    return _nlp
-
 def get_embed_model():
     return _embed_model
 
 def get_summarizer():
     return _summarizer
 
-# Pre-load on import
-init_models()
+# Models will be loaded asynchronously during data ingestion to save time
+# init_models()

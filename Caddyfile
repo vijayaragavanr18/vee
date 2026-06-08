@@ -1,0 +1,16 @@
+{env.FRONTEND_DOMAIN} {
+    # Automatic HTTPS with Let's Encrypt
+    
+    # Compress responses
+    encode gzip zstd
+    
+    # Reverse proxy to the Gunicorn/Uvicorn backend
+    reverse_proxy backend:8000
+    
+    # Security Headers
+    header {
+        Strict-Transport-Security max-age=31536000;
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+    }
+}

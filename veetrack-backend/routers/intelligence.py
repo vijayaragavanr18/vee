@@ -228,9 +228,6 @@ async def stream_article_analysis(req: ArticleStreamRequest):
     import os, json, httpx
     from fastapi.responses import StreamingResponse
     
-    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
-    
     prompt = f"""You are a Senior Corporate Intelligence Analyst at an elite PR tracking firm. 
 Provide a master-level, highly elaborate analysis of the following article. Your analysis must be massively comprehensive, literally filling a full-page executive report.
 
@@ -292,51 +289,13 @@ SUGGESTED ACTIONS & IMPACT:
         
         final_prompt = prompt.replace("{ARTICLE_TEXT}", article_text)
 
-        openrouter_key = os.getenv("OPENROUTER_API_KEY")
-
         try:
-            async with httpx.AsyncClient(timeout=900.0) as client:
-                if openrouter_key:
-                    # Use OpenRouter
-                    headers = {
-                        "Authorization": f"Bearer {openrouter_key}",
-                        "HTTP-Referer": "http://localhost:3000",
-                        "X-Title": "VeeTrack"
-                    }
-                    payload = {
-                        "model": os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"),
-                        "messages": [{"role": "user", "content": final_prompt}],
-                        "stream": True,
-                        "temperature": 0.5
-                    }
-                    async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as response:
-                        async for line in response.aiter_lines():
-                            if line.startswith("data: "):
-                                data_str = line[6:]
-                                if data_str.strip() == "[DONE]":
-                                    continue
-                                try:
-                                    data = json.loads(data_str)
-                                    if "choices" in data and len(data["choices"]) > 0:
-                                        chunk = data["choices"][0].get("delta", {}).get("content", "")
-                                        if chunk:
-                                            yield json.dumps({"type": "chunk", "chunk": chunk}) + "\n"
-                                except Exception as parse_e:
-                                    continue
-                else:
-                    # Use Local Ollama
-                    async with client.stream("POST", ollama_url, json={
-                        "model": ollama_model,
-                        "prompt": final_prompt,
-                        "stream": True,
-                        "options": {"temperature": 0.5, "num_predict": 4096, "num_ctx": 8192},
-                    }) as response:
-                        async for line in response.aiter_lines():
-                            if line:
-                                data = json.loads(line)
-                                chunk = data.get("response", "")
-                                if chunk:
-                                    yield json.dumps({"type": "chunk", "chunk": chunk}) + "\n"
+            from backend.llm_service import stream_card
+            from backend.ner_service import extract_entities
+            entities = extract_entities(article_text)
+            async for chunk in stream_card(req.url or "", article_text, entities):
+                if chunk:
+                    yield json.dumps({"type": "chunk", "chunk": chunk}) + "\n"
         except Exception as e:
             logger.error(f"On-demand streaming failed: {e}")
             yield json.dumps({"type": "chunk", "chunk": "Error generating analysis."}) + "\n"

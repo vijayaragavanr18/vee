@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'veetrack-backend'
+    static_configs:
+      # In Docker-Compose, host.docker.internal reaches the host where FastAPI is running
+      # If FastAPI runs inside compose, use the service name 'backend:8000'
+      - targets: ['host.docker.internal:8000']

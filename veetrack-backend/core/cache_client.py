@@ -5,11 +5,20 @@ Replaces Redis to provide a 100% portable, self-contained architecture.
 from __future__ import annotations
 import os
 import fnmatch
-from diskcache import Cache
+import diskcache
+
+def make_cache(path: str, size_gb: float = 2.0) -> diskcache.Cache:
+    return diskcache.Cache(
+        path,
+        size_limit=int(size_gb * 1_000_000_000),
+        timeout=30,           # wait up to 30s instead of failing
+        disk_min_file_size=0,
+        cull_limit=0,
+    )
 
 CACHE_DIR = os.getenv("CACHE_DIR", ".veetrack_cache")
 # Thread-safe, process-safe cache
-_cache = Cache(CACHE_DIR)
+_cache = make_cache(CACHE_DIR)
 
 class AsyncCache:
     async def get(self, key: str) -> str | None:
@@ -32,7 +41,7 @@ class AsyncCache:
         # We don't close the global cache per request
         pass
         
-    async def publish(self, channel: str, message: str):
+    async def publish(self, _channel: str, message: str):
         # Cross-process pub/sub not supported without Redis.
         # Fallback polling mechanisms will take over.
         pass

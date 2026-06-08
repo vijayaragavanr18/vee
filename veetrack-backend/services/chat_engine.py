@@ -94,8 +94,18 @@ async def start_session(
         if _embed_model is None:
             raise ValueError("Embedding model not loaded")
 
-        embeddings = _embed_model.encode(chunks).astype("float32")
-        index = faiss.IndexFlatL2(embeddings.shape[1])
+        import numpy as np
+        embeddings = np.array(list(_embed_model.embed(chunks))).astype("float32")
+        
+        from backend.device import DEVICE
+        def make_faiss_index(dimension: int):
+            idx = faiss.IndexFlatL2(dimension)
+            if DEVICE == "cuda":
+                res = faiss.StandardGpuResources()
+                idx = faiss.index_cpu_to_gpu(res, 0, idx)
+            return idx
+
+        index = make_faiss_index(embeddings.shape[1])
         index.add(embeddings)
 
         # Store FAISS index in memory (can't serialize to Redis)
@@ -127,7 +137,8 @@ async def ask_question(session_id: str, question: str) -> str:
     context_chunks: list[str] = []
 
     if faiss_data and "index" in faiss_data:
-        q_embed = faiss_data["model"].encode([question]).astype("float32")
+        import numpy as np
+        q_embed = np.array(list(faiss_data["model"].embed([question]))).astype("float32")
         _, indices = faiss_data["index"].search(q_embed, k=min(3, len(chunks)))
         context_chunks = [chunks[i] for i in indices[0] if i < len(chunks)]
     else:
@@ -153,27 +164,28 @@ Question: {question}
 Answer:"""
 
     import os
-    ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    ollama_model = os.getenv("OLLAMA_MODEL", OLLAMA_MODEL)
+    vllm_url = os.getenv("VLLM_URL", "http://localhost:8000/v1/chat/completions")
+    vllm_model = os.getenv("LLM_MODEL", "Qwen/Qwen2.5-3B-Instruct-AWQ")
 
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.post(
-                ollama_url,
+                vllm_url,
                 json={
-                    "model": ollama_model,
-                    "prompt": prompt,
+                    "model": vllm_model,
+                    "messages": [{"role": "user", "content": prompt}],
                     "stream": False,
-                    "options": {"temperature": 0.1, "num_predict": 200},
+                    "temperature": 0.1,
+                    "max_tokens": 200,
                 },
             )
             if resp.status_code == 200:
-                answer = resp.json().get("response", "").strip()
+                answer = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
                 if answer:
                     return answer
             return "Failed to generate answer from LLM."
     except Exception as e:
-        logger.error(f"[Chat] Ollama call failed: {e}")
+        logger.error(f"[Chat] vLLM call failed: {e}")
         return "LLM generation unavailable."
 
 

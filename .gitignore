@@ -59,3 +59,7 @@ model_cache/
 
 Check/
 .veetrack_cache/
+venv/
+secrets/
+veetrack_local.db
+veetrack-backend/veetrack_local.db

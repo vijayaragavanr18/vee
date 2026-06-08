@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Helvetica', sans-serif; color: #333; line-height: 1.6; }
+        h1 { color: #2c3e50; text-align: center; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
+        .cluster { margin-bottom: 40px; page-break-inside: avoid; }
+        .cluster-title { font-size: 20px; color: #e74c3c; margin-bottom: 10px; }
+        .cluster-summary { font-style: italic; background: #f9f9f9; padding: 15px; border-left: 4px solid #e74c3c; }
+        .article { margin-top: 20px; padding-left: 20px; }
+        .article-title { font-weight: bold; font-size: 16px; }
+        .risk-HIGH { color: #c0392b; font-weight: bold; }
+        .risk-MEDIUM { color: #f39c12; font-weight: bold; }
+        .risk-LOW { color: #27ae60; font-weight: bold; }
+        .footer { text-align: center; font-size: 12px; color: #7f8c8d; position: fixed; bottom: 0; width: 100%; }
+    </style>
+</head>
+<body>
+    <h1>VeeTrack Daily Executive Brief</h1>
+    <p style="text-align: center;">Generated on: {{ date }}</p>
+    
+    {% for cluster in clusters %}
+    <div class="cluster">
+        <div class="cluster-title">Topic: {{ cluster.id }}</div>
+        <div class="cluster-summary">{{ cluster.ai_summary }}</div>
+        
+        {% for article in cluster.articles %}
+        <div class="article">
+            <div class="article-title">{{ article.title }}</div>
+            <div><strong>Sentiment:</strong> {{ article.sentiment }} | <strong>Risk:</strong> <span class="risk-{{ article.risk_level }}">{{ article.risk_level }}</span></div>
+            <p>{{ article.executive_summary }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+    
+    <div class="footer">VeeTrack AI Media Intelligence - Strictly Confidential</div>
+</body>
+</html>
