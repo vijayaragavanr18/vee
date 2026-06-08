@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { X, ArrowLeft, Clock, Calendar, User, Bookmark } from 'lucide-react';
+import { X, ArrowLeft, Clock, Calendar, User, Bookmark, FileText } from 'lucide-react';
+
 export const ArticleModal = ({
   article,
   isOpen,
@@ -11,6 +12,50 @@ export const ArticleModal = ({
 }) => {
   const scrollContainerRef = useRef(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [fullArticleHtml, setFullArticleHtml] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Reset when article changes
+  useEffect(() => {
+      setFullArticleHtml('');
+      setIsLoading(false);
+  }, [article?.id]);
+
+  useEffect(() => {
+    if (isOpen && article && !fullArticleHtml && !isLoading) {
+        let isMounted = true;
+        
+        const fetchFullArticle = async () => {
+            if (!article.url) {
+                if (isMounted) setFullArticleHtml(article.content || "<p>No full content available.</p>");
+                return;
+            }
+
+            setIsLoading(true);
+            try {
+                const res = await fetch('/api/scrape-article', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ url: article.url })
+                });
+                if (!res.ok) throw new Error('Scrape failed');
+                
+                const data = await res.json();
+                if (isMounted) {
+                    setFullArticleHtml(data.content);
+                }
+            } catch(e) {
+                console.error(e);
+                if (isMounted) setFullArticleHtml(article.content || "<p>Failed to load full article.</p>");
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        };
+        fetchFullArticle();
+        
+        return () => { isMounted = false; };
+    }
+  }, [isOpen, article, fullArticleHtml, isLoading]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -47,7 +92,9 @@ export const ArticleModal = ({
     const currentScroll = element.scrollTop;
     setScrollProgress(currentScroll / totalHeight * 100);
   };
+  
   if (!article || !isOpen) return null;
+  
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-xl transition-all duration-300">
       {/* Top Reading Progress Bar */}
       <div className="absolute top-0 left-0 w-full h-[3px] bg-surface-container-highest z-50">
@@ -110,10 +157,29 @@ export const ArticleModal = ({
             <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
           </div>
 
-          {/* Main Body HTML text */}
-          <div className="font-body-lg text-body-lg text-on-surface-variant leading-relaxed select-text space-y-4" dangerouslySetInnerHTML={{
-          __html: article.content
-        }} />
+          {/* Original Article Content Block */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-6 pb-2 border-b border-outline-variant/20">
+              <FileText size={18} className={isLoading ? "text-primary-container animate-pulse" : "text-primary-container"} />
+              <h3 className="font-headline-sm text-headline-sm uppercase tracking-wide text-on-surface">Original Article</h3>
+            </div>
+            
+            {isLoading ? (
+               <div className="space-y-4">
+                 <div className="h-4 bg-surface-container-highest rounded animate-pulse w-full"></div>
+                 <div className="h-4 bg-surface-container-highest rounded animate-pulse w-[90%]"></div>
+                 <div className="h-4 bg-surface-container-highest rounded animate-pulse w-[95%]"></div>
+                 <div className="h-4 bg-surface-container-highest rounded animate-pulse w-[80%]"></div>
+                 <div className="h-4 bg-surface-container-highest rounded animate-pulse w-full"></div>
+                 <div className="h-4 bg-surface-container-highest rounded animate-pulse w-[70%]"></div>
+               </div>
+            ) : (
+                <div 
+                    className="prose prose-invert prose-primary max-w-none font-body-lg text-body-lg text-on-surface-variant leading-relaxed select-text [&>p]:mb-6 [&>h1]:mb-4 [&>h2]:mb-4 [&>h3]:mb-4 [&>ul]:mb-6 [&>ol]:mb-6 [&>img]:rounded-lg [&>img]:my-6 [&_a]:text-primary-container [&_a]:underline" 
+                    dangerouslySetInnerHTML={{ __html: fullArticleHtml }} 
+                />
+            )}
+          </div>
 
           {/* Footer Area */}
           <div className="mt-12 pt-8 border-t border-outline-variant/20 text-center">

@@ -614,6 +614,48 @@ async def fetch_alpha_vantage(keyword: str) -> list[dict]:
         logger.warning("[Alpha Vantage] Error for '%s': %s", keyword, e)
         return []
 
+# ── Background Pre-Scraping ─────────────────────────────────────
+
+async def background_pre_scrape(articles: list[dict]):
+    """
+    Silently scrapes the full text of articles in the background and saves to DiskCache.
+    This guarantees 0-second load times when the user clicks 'Read Full Story'.
+    """
+    from core.cache_client import get_cache
+    cache = await get_cache()
+    
+    # We only pre-scrape the top 10 articles to save resources
+    for article in articles[:10]:
+        url = article.get("url")
+        if not url or not url.startswith("http"):
+            continue
+            
+        cache_key = f"scrape:{url}"
+        existing = await cache.get(cache_key)
+        if existing:
+            continue
+            
+        logger.info(f"[Pre-Fetch] Silently scraping {url} in background...")
+        try:
+            # 1. Try Jina Reader
+            async with httpx.AsyncClient(timeout=10.0) as fetch_client:
+                jina_res = await fetch_client.get(f"https://r.jina.ai/{url}")
+                if jina_res.status_code == 200 and len(jina_res.text) > 500:
+                    await cache.set(cache_key, jina_res.text[:15000], ex=86400 * 7) # Cache for 7 days
+                    continue
+        except Exception:
+            pass
+            
+        # 2. Try Crawl4AI fallback
+        try:
+            from crawl4ai import AsyncWebCrawler
+            async with AsyncWebCrawler(verbose=False) as crawler:
+                result = await crawler.arun(url=url, bypass_cache=True)
+                if result and result.markdown:
+                    await cache.set(cache_key, result.markdown[:15000], ex=86400 * 7)
+        except Exception as e:
+            logger.debug(f"[Pre-Fetch] Failed to pre-scrape {url}: {e}")
+
 
 # ── Parallel Fetch Orchestrator ─────────────────────────────────
 

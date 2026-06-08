@@ -58,3 +58,4 @@ redis_data/
 model_cache/
 
 Check/
+.veetrack_cache/

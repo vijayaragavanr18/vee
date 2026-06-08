@@ -41,11 +41,11 @@ nltk.download('punkt_tab', quiet=True)
 nltk.download('stopwords', quiet=True)
 " 2>/dev/null || true
 
-# Ollama / gemma2:2b
+# Ollama / llama3.2:1b
 echo "Checking Ollama..."
 if command -v ollama &>/dev/null; then
-  ollama list 2>/dev/null | grep -q "gemma2" || echo "Please ensure Gemma 2 is loaded."
-  echo "Ollama ready (gemma2:2b) ✓"
+  ollama list 2>/dev/null | grep -q "llama3.2:1b" || echo "Please ensure llama3.2:1b is loaded."
+  echo "Ollama ready (llama3.2:1b) ✓"
 else
   echo "WARNING: Ollama not found. Chat falls back to context extraction."
   echo "         Install: curl -fsSL https://ollama.com/install.sh | sh"

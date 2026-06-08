@@ -163,20 +163,22 @@ export default function Home() {
           Sports: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=600&q=80',
           Global: 'https://images.unsplash.com/photo-1526470608268-f674ce90ebd4?auto=format&fit=crop&w=600&q=80'
         };
+        
         if (data.companyNews && Array.isArray(data.companyNews)) {
           data.companyNews.forEach((item, idx) => {
             const category = item.section === 'company' ? 'Business' : 'Technology';
-            const imageUrl = CATEGORY_IMAGES[category] || CATEGORY_IMAGES.Technology;
+            // Try to extract real image from the data pipeline
+            let extractedImage = item.image_url || item.image || item.urlToImage || item.thumbnail || item.banner_image;
+            if (!extractedImage || extractedImage.trim() === '') {
+                // If it's a relative URL, or invalid, fallback to standard image
+                extractedImage = CATEGORY_IMAGES[category] || CATEGORY_IMAGES.Technology;
+            }
+            const imageUrl = extractedImage;
             
-            // Clean up noisy snippets (HTML entities, duplicated suffixes)
             let cleanHeadline = (item.headline || 'Untitled Article').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"');
             let rawSnippet = (item.snippet || '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"');
+            let fullTextContent = (item.fullContent || rawSnippet || '');
             
-            // Build extremely elaborate bullets for 'What Happened' and 'Why It Matters'
-            let whatHappenedBullets = [];
-            let whyItMattersBullets = [];
-            
-            // Function to split large paragraphs into bullet points
             const textToBullets = (text, fallbackArray) => {
               if (text && text.length > 30) {
                 return text.split(/(?<=[.!?])\s+/).filter(s => s.length > 10);
@@ -184,49 +186,29 @@ export default function Home() {
               return fallbackArray;
             };
 
-            // Parse LLM elaborated fields if available
-            if (item.llm_what_happened) {
-              whatHappenedBullets = textToBullets(item.llm_what_happened, [cleanHeadline, rawSnippet]);
-            } else {
-              whatHappenedBullets = textToBullets(rawSnippet, [cleanHeadline]);
-            }
+            let whatHappenedBullets = textToBullets(item.llm_what_happened, [cleanHeadline, rawSnippet]);
+            let whyItMattersBullets = textToBullets(item.llm_why_it_matters, [item.businessImpact || 'Ongoing monitoring required.', `Sentiment is predominantly ${item.sentiment}.`]);
             
-            if (item.llm_why_it_matters) {
-              whyItMattersBullets = textToBullets(item.llm_why_it_matters, [item.businessImpact]);
-            } else {
-              whyItMattersBullets = [item.businessImpact || 'Ongoing monitoring required.', `Sentiment is predominantly ${item.sentiment}.`, `Source authority level: ${item.relevanceScore > 50 ? 'High' : 'Medium'}.`];
-            }
-
-            // Construct a highly readable, story-driven AI Narrative
             let storyNarrative = item.llm_ai_narrative;
             if (!storyNarrative || storyNarrative.length < 30) {
                 let globalBrief = data.executiveBrief?.happened && data.executiveBrief.happened !== "Analysis unavailable." 
-                  ? data.executiveBrief.happened 
-                  : '';
-                  
+                  ? data.executiveBrief.happened : '';
                 storyNarrative = `This article highlights significant developments regarding ${cleanHeadline}. `;
-                if (rawSnippet) {
-                  storyNarrative += `Fundamentally, ${rawSnippet.charAt(0).toLowerCase() + rawSnippet.slice(1)} `;
-                }
-                if (item.businessImpact) {
-                  storyNarrative += `From a strategic perspective, ${item.businessImpact.charAt(0).toLowerCase() + item.businessImpact.slice(1)} `;
-                }
-                storyNarrative += `The overall media sentiment is ${item.sentiment}, suggesting that the audience is perceiving this as ${item.sentiment === 'positive' ? 'highly favorable' : item.sentiment === 'negative' ? 'a potential concern' : 'a neutral matter of fact'}.`;
-                
-                if (globalBrief) {
-                  storyNarrative += `\n\nBroader context: ${globalBrief}`;
-                }
+                if (rawSnippet) storyNarrative += `Fundamentally, ${rawSnippet.charAt(0).toLowerCase() + rawSnippet.slice(1)} `;
+                if (item.businessImpact) storyNarrative += `From a strategic perspective, ${item.businessImpact.charAt(0).toLowerCase() + item.businessImpact.slice(1)} `;
+                storyNarrative += `The overall media sentiment is ${item.sentiment}.`;
+                if (globalBrief) storyNarrative += `\n\nBroader context: ${globalBrief}`;
             }
 
             articles.push({
-              id: `art-${idx}-${Date.now()}`,
+              id: item.id || `art-${idx}-${Date.now()}`,
               category: category,
               title: cleanHeadline,
               summary: rawSnippet,
-              keywordSummary: `Relevance score: ${item.relevanceScore}/100. Mentioned entities: ${[...(item.entities?.organizations || []), ...(item.entities?.people || [])].join(', ')}.`,
+              keywordSummary: fullTextContent.length > 300 ? fullTextContent.substring(0, 450) + "..." : rawSnippet,
               whatHappened: whatHappenedBullets,
               whyItMatters: whyItMattersBullets,
-              aiActions: [item.relevanceExplanation || 'Continue standard tracking.', 'Monitor closely for updates.', 'Cross-reference with related competitors.'],
+              aiActions: [item.relevanceExplanation || 'Continue standard tracking.', 'Monitor closely.'],
               imageUrl: imageUrl,
               imageAlt: item.headline,
               author: item.publication,
@@ -244,10 +226,10 @@ export default function Home() {
           setCurrentArticles(articles);
           setHasSearched(true);
         }
+        setIsAnalyzing(false);
       }
     } catch (e) {
       console.error('Search fetch failed:', e);
-    } finally {
       setIsAnalyzing(false);
     }
   };

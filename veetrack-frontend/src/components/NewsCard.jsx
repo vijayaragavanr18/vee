@@ -18,6 +18,104 @@ export const NewsCard = ({
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatScrollRef = useRef(null);
 
+  // Streaming AI content state
+  const [streamedContent, setStreamedContent] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [hasStreamed, setHasStreamed] = useState(false);
+
+  useEffect(() => {
+      if (activePageIndex > 0 && !hasStreamed && !isStreaming) {
+          let isMounted = true;
+          
+          const startStream = async () => {
+              setIsStreaming(true);
+              setHasStreamed(true);
+              try {
+                  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+                  const res = await fetch(`${backendUrl}/api/intelligence/stream-article`, {
+                      method: 'POST',
+                      headers: {'Content-Type': 'application/json'},
+                      body: JSON.stringify({
+                          title: article.title,
+                          content: article.fullContent || article.content || article.summary,
+                          url: article.url
+                      })
+                  });
+                  if (!res.ok) throw new Error('Stream failed');
+                  
+                  const reader = res.body.getReader();
+                  const decoder = new TextDecoder();
+                  let buffer = '';
+                  
+                  while(isMounted) {
+                      const {value, done} = await reader.read();
+                      if (done) break;
+                      
+                      buffer += decoder.decode(value, {stream: true});
+                      const lines = buffer.split('\n');
+                      buffer = lines.pop(); 
+                      
+                      for (const line of lines) {
+                          if (!line.trim()) continue;
+                          try {
+                              const msg = JSON.parse(line);
+                              if (msg.type === 'chunk') {
+                                  setStreamedContent(prev => prev + msg.chunk);
+                              }
+                          } catch(e) {}
+                      }
+                  }
+              } catch (e) {
+                  console.error("Card streaming error:", e);
+              } finally {
+                  if (isMounted) setIsStreaming(false);
+              }
+          };
+          startStream();
+          return () => { isMounted = false; };
+      }
+  }, [activePageIndex, article, hasStreamed, isStreaming]);
+
+  const parseStreamedContent = (text) => {
+      const sections = {
+          whatHappened: article.whatHappened,
+          whyItMatters: article.whyItMatters,
+          aiNarrative: article.aiNarrative,
+          suggestedActions: article.aiActions
+      };
+      if (!text) return sections;
+
+      // Use a more robust regex that ignores ** markdown and is case insensitive
+      const whatHappenedMatch = text.match(/WHAT HAPPENED[^A-Z0-9]*([\s\S]*?)(?=WHY IT MATTERS|AI NARRATIVE|SUGGESTED ACTIONS|$)/i);
+      if (whatHappenedMatch && whatHappenedMatch[1].trim()) {
+          sections.whatHappened = whatHappenedMatch[1].trim().replace(/\*\*/g, '').split('\n').filter(s => s.trim().length > 5);
+      }
+      
+      const whyItMattersMatch = text.match(/WHY IT MATTERS[^A-Z0-9]*([\s\S]*?)(?=AI NARRATIVE|SUGGESTED ACTIONS|$)/i);
+      if (whyItMattersMatch && whyItMattersMatch[1].trim()) {
+          sections.whyItMatters = whyItMattersMatch[1].trim().replace(/\*\*/g, '').split('\n').filter(s => s.trim().length > 5);
+      }
+
+      const aiNarrativeMatch = text.match(/AI NARRATIVE[^A-Z0-9]*([\s\S]*?)(?=SUGGESTED ACTIONS|$)/i);
+      if (aiNarrativeMatch && aiNarrativeMatch[1].trim()) {
+          sections.aiNarrative = aiNarrativeMatch[1].trim().replace(/\*\*/g, '');
+      }
+
+      const suggestedActionsMatch = text.match(/SUGGESTED ACTIONS[^A-Z0-9]*([\s\S]*?)$/i);
+      if (suggestedActionsMatch && suggestedActionsMatch[1].trim()) {
+          sections.suggestedActions = suggestedActionsMatch[1].trim().replace(/\*\*/g, '').split('\n').filter(s => s.trim().length > 5);
+      }
+
+      return sections;
+  };
+
+  const parsed = hasStreamed ? parseStreamedContent(streamedContent) : {
+      whatHappened: article.whatHappened,
+      whyItMatters: article.whyItMatters,
+      aiNarrative: article.aiNarrative,
+      suggestedActions: article.aiActions
+  };
+
   // Auto-scroll chat to bottom
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -162,21 +260,21 @@ export const NewsCard = ({
               </div>
               <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin">
                 <div>
-                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2">What Happened</h4>
+                  <h4 className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2">What Happened {isStreaming && <span className="animate-pulse">...</span>}</h4>
                   <ul className="space-y-2 font-body-lg text-body-md md:text-body-lg text-on-surface-variant leading-relaxed">
-                    {article.whatHappened?.map((point, index) => <li key={index} className="flex gap-2 items-start text-left">
+                    {parsed.whatHappened?.map((point, index) => <li key={index} className="flex gap-2 items-start text-left">
                         <span className="text-blue-400 mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-blue-400" />
                         <span>{point}</span>
-                      </li>) || <li className="text-on-surface-variant/40 italic">No details available.</li>}
+                      </li>) || <li className="text-on-surface-variant/40 italic">Generating details...</li>}
                   </ul>
                 </div>
-                <div>
-                  <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-2 mt-2">Why It Happened</h4>
+                <div className="flex-1 mt-4">
+                  <h4 className="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-2 mt-2">Why It Happened {isStreaming && <span className="animate-pulse">...</span>}</h4>
                   <ul className="space-y-2 font-body-lg text-body-md md:text-body-lg text-on-surface-variant leading-relaxed">
-                    {article.whyItMatters?.map((point, index) => <li key={index} className="flex gap-2 items-start text-left">
+                    {parsed.whyItMatters?.map((point, index) => <li key={index} className="flex gap-2 items-start text-left">
                         <span className="text-amber-400 mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400" />
                         <span>{point}</span>
-                      </li>) || <li className="text-on-surface-variant/40 italic">No details available.</li>}
+                      </li>) || <li className="text-on-surface-variant/40 italic">Generating details...</li>}
                   </ul>
                 </div>
               </div>
@@ -198,7 +296,8 @@ export const NewsCard = ({
               </div>
               <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin">
                 <p className="font-body-lg text-body-md md:text-body-lg text-on-surface-variant leading-relaxed text-justify whitespace-pre-line italic pr-1">
-                  &ldquo;{article.aiNarrative}&rdquo;
+                  &ldquo;{parsed.aiNarrative || "Generating immersive cognitive narrative..."}&rdquo;
+                  {isStreaming && <span className="inline-block w-2 h-4 ml-1 bg-purple-400 animate-pulse"></span>}
                 </p>
               </div>
             </div>
@@ -219,10 +318,10 @@ export const NewsCard = ({
               </div>
               <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin">
                 <ul className="space-y-3 font-body-lg text-body-md md:text-body-lg text-on-surface-variant leading-relaxed">
-                  {article.aiActions?.map((point, index) => <li key={index} className="flex gap-2 items-start text-left">
-                      <span className="text-emerald-400 mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      <span>{point}</span>
-                    </li>) || <li className="text-on-surface-variant/40 italic">No details available.</li>}
+                  {parsed.suggestedActions?.map((point, index) => <li key={index} className="flex gap-2 items-start text-left bg-emerald-500/5 p-3 rounded-md border border-emerald-500/20 shadow-sm">
+                      <span className="text-emerald-400 mt-1 shrink-0 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                      <span className="font-semibold text-emerald-100">{point}</span>
+                    </li>) || <li className="text-on-surface-variant/40 italic">Generating interactive playbook...</li>}
                 </ul>
               </div>
             </div>

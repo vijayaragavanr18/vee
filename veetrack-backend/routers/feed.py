@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
 
-from services.ingestion import fetch_all_sources
+from services.ingestion import fetch_all_sources, background_pre_scrape
 from services.nlp_pipeline import process_articles
 
 logger = logging.getLogger(__name__)
@@ -27,9 +27,15 @@ class FeedRequest(BaseModel):
 
 
 @router.post("/api/feed")
-async def get_feed(req: FeedRequest):
+async def get_feed(req: FeedRequest, background_tasks: BackgroundTasks):
     """Fetch and process articles from all sources."""
     raw = await fetch_all_sources(req.keywords, days=req.days)
     processed = await process_articles(raw)
     processed.sort(key=lambda x: x.get("risk_score", 0), reverse=True)
-    return processed[: req.limit]
+    
+    top_articles = processed[: req.limit]
+    
+    # Fire off background worker to silently pre-scrape the text for instant loading
+    background_tasks.add_task(background_pre_scrape, top_articles)
+    
+    return top_articles
